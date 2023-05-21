@@ -5,14 +5,12 @@
 FASTLED_USING_NAMESPACE
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 
-// Pinout = GND, V+, SDA A4, SCL A5
 #define FASTLED_ALLOW_INTERRUPTS 0
 #define DATA_PIN 3
 #define NUM_LEDS 77
-// #define SW_TOGGLE_COLOR 4
-#define CYCLE_BRIGHTNESS 5
+#define CYCLE_BRIGHTNESS A3
+#define LATCH_COLOR A2
 
-// unsigned long lastButtonPressColor = 0;
 unsigned long lastButtonPressBrightness = 0;
 CRGB leds[NUM_LEDS];
 int brightIndex = 2;
@@ -20,6 +18,8 @@ int brightModes[6] = {42, 85, 128, 170, 212, 255};
 int hue;
 int sat;
 int val;
+int lastHue = 0;
+int lastSat = 0;
 
 void setup()
 {
@@ -29,41 +29,81 @@ void setup()
     lcd.backlight();
     lcd.setBacklight(50);
     lcd.setContrast(255);
-    pinMode(2, INPUT_PULLUP);
+    pinMode(CYCLE_BRIGHTNESS, INPUT);
+    pinMode(LATCH_COLOR, INPUT);
     delay(1);
 }
 
 void loop()
 {
-    // int colorBtnState = digitalRead(SW_TOGGLE_COLOR);
-    int brightBtnState = digitalRead(CYCLE_BRIGHTNESS);
+    int brightBtnState = analogRead(CYCLE_BRIGHTNESS); // Read the analog value instead
     delay(5);
-    if (brightBtnState == LOW && millis() - lastButtonPressBrightness > 50)
+    if (brightBtnState > 500 && millis() - lastButtonPressBrightness > 100) // Adjust the threshold according to your specific hardware
     {
         brightIndex++;
         lastButtonPressBrightness = millis();
+
+        if (brightIndex >= sizeof(brightModes) / sizeof(brightModes[0]))
+        {
+            brightIndex = 0;
+        }
     }
 
-    if (brightIndex > 5)
+    int readToggle = analogRead(LATCH_COLOR);
+    if (readToggle > 500)
     {
-        brightIndex = 0;
+
+        hue = 82;
+        sat = 170;
+        val = brightModes[brightIndex];
+
+        printLCD();
+
+        for (int i = 0; i < NUM_LEDS; i++)
+        {
+            leds[i] = CHSV(hue, sat, val);
+        }
+        FastLED.show();
+        delay(1);
     }
-
-    int readHueRaw = analogRead(A0);
-    int readSatRaw = analogRead(A1);
-
-    hue = map(readHueRaw, 0, 1023, 0, 255);
-    sat = map(readSatRaw, 0, 1023, 0, 255);
-    val = brightModes[brightIndex];
-
-    printLCD();
-
-    for (int i = 0; i < NUM_LEDS; i++)
+    else
     {
-        leds[i] = CHSV(hue, sat, val);
+
+        int readHueRaw = analogRead(A0);
+        int readSatRaw = analogRead(A1);
+
+        if (readHueRaw > (hue + 10) || readHueRaw < (hue - 10))
+        {
+            hue = map(readHueRaw, 0, 1023, 0, 255);
+            // hue = int(readHueRaw * (255 / 1023));
+            lastHue = hue;
+        }
+        else
+        {
+            hue = lastHue;
+        }
+
+        if (readSatRaw > (sat + 10) || readSatRaw < (sat - 10))
+        {
+            sat = map(readSatRaw, 0, 1023, 0, 255);
+            // sat = int(readSatRaw * (225 / 1023));
+            lastSat = sat;
+        }
+        else
+        {
+            sat = lastSat;
+        }
+        val = brightModes[brightIndex];
+
+        printLCD();
+
+        for (int i = 0; i < NUM_LEDS; i++)
+        {
+            leds[i] = CHSV(hue, sat, val);
+        }
+        FastLED.show();
+        delay(1);
     }
-    FastLED.show();
-    delay(1);
 }
 
 void printLCD()
@@ -78,4 +118,6 @@ void printLCD()
     lcd.print("Val: ");
     lcd.print(val);
     lcd.setCursor(8, 1);
+    lcd.print("Bri: ");
+    lcd.print(brightModes[brightIndex]);
 }
