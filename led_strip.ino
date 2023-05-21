@@ -9,15 +9,11 @@ LiquidCrystal_I2C lcd(0x27, 16, 2);
 #define FASTLED_ALLOW_INTERRUPTS 0
 #define DATA_PIN 3
 #define NUM_LEDS 77
-#define SW_TOGGLE_COLOR 4
+// #define SW_TOGGLE_COLOR 4
 #define CYCLE_BRIGHTNESS 5
 
-unsigned long lastButtonPressColor = 0;
+// unsigned long lastButtonPressColor = 0;
 unsigned long lastButtonPressBrightness = 0;
-int btnVal;
-int hue = 0;
-int sat = 255;
-int val = 128;
 CRGB leds[NUM_LEDS];
 brightnesses int[6] = {42, 85, 128, 170, 212, 255};
 int brightnessIndex = 2;
@@ -36,13 +32,28 @@ void setup()
 
 void loop()
 {
-    int colorBtnState = digitalRead(SW);
+    // int colorBtnState = digitalRead(SW_TOGGLE_COLOR);
+    int brightBtnState = digitalRead(CYCLE_BRIGHTNESS);
     delay(5);
-    if (colorBtnState == LOW && millis() - lastButtonPressBrightness > 100)
+    if (brightBtnState == LOW && millis() - lastButtonPressBrightness > 50)
     {
-        currentIdx = (currentIdx < 2) ? currentIdx + 1 : 0;
-        lastButtonPress = millis();
+        brightnessIndex++;
+        lastButtonPressBrightness = millis();
     }
+
+    if (brightnessIndex > 5)
+    {
+        brightnessIndex = 0;
+    }
+
+    readHueRaw = analogRead(A0);
+    readSatRaw = analogRead(A1);
+
+    hue = map(readHueRaw, 0, 1023, 0, 255);
+    sat = map(readSatRaw, 0, 1023, 0, 255);
+    val = brightnesses[brightnessIndex];
+
+    printLCD();
 
     for (int i = 0; i < NUM_LEDS; i++)
     {
@@ -50,4 +61,20 @@ void loop()
     }
     FastLED.show();
     delay(1);
+}
+
+void printLCD()
+{
+    lcd.setCursor(0, 0);
+    lcd.print("Hue: ");
+    lcd.print(hue);
+    lcd.setCursor(0, 1);
+    lcd.print("Sat: ");
+    lcd.print(sat);
+    lcd.setCursor(8, 0);
+    lcd.print("Val: ");
+    lcd.print(val);
+    lcd.setCursor(8, 1);
+    lcd.print("Bri: ");
+    lcd.print(brightnesses[brightnessIndex]);
 }
