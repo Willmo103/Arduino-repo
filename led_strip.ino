@@ -15,8 +15,11 @@ LiquidCrystal_I2C lcd(0x27, 16, 2);
 // unsigned long lastButtonPressColor = 0;
 unsigned long lastButtonPressBrightness = 0;
 CRGB leds[NUM_LEDS];
-brightnesses int[6] = {42, 85, 128, 170, 212, 255};
-int brightnessIndex = 2;
+int brightIndex = 2;
+int brightModes[6] = {42, 85, 128, 170, 212, 255};
+int hue;
+int sat;
+int val;
 
 void setup()
 {
@@ -26,7 +29,7 @@ void setup()
     lcd.backlight();
     lcd.setBacklight(50);
     lcd.setContrast(255);
-    pinmode(2, INPUT_PULLUP);
+    pinMode(2, INPUT_PULLUP);
     delay(1);
 }
 
@@ -37,21 +40,21 @@ void loop()
     delay(5);
     if (brightBtnState == LOW && millis() - lastButtonPressBrightness > 50)
     {
-        brightnessIndex++;
+        brightIndex++;
         lastButtonPressBrightness = millis();
     }
 
-    if (brightnessIndex > 5)
+    if (brightIndex > 5)
     {
-        brightnessIndex = 0;
+        brightIndex = 0;
     }
 
-    readHueRaw = analogRead(A0);
-    readSatRaw = analogRead(A1);
+    int readHueRaw = analogRead(A0);
+    int readSatRaw = analogRead(A1);
 
     hue = map(readHueRaw, 0, 1023, 0, 255);
     sat = map(readSatRaw, 0, 1023, 0, 255);
-    val = brightnesses[brightnessIndex];
+    val = brightModes[brightIndex];
 
     printLCD();
 
@@ -75,6 +78,4 @@ void printLCD()
     lcd.print("Val: ");
     lcd.print(val);
     lcd.setCursor(8, 1);
-    lcd.print("Bri: ");
-    lcd.print(brightnesses[brightnessIndex]);
 }
